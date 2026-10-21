@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Play, RotateCw, ExternalLink, Terminal } from "lucide-react";
+import { Play, ExternalLink, Minimize2, Maximize2, Copy, Check, Terminal, ChevronDown } from "lucide-react";
+import { CodeLabMain } from "../codelab/CodeLabMain"; // Aapka modular IDE component
 
 const codeFiles: Record<string, { name: string; code: string[] }> = {
   "kernel.ts": {
@@ -59,11 +60,37 @@ const codeFiles: Record<string, { name: string; code: string[] }> = {
 export default function CodeLabSection() {
   const [activeTab, setActiveTab] = useState("kernel.ts");
   const [isExecuting, setIsExecuting] = useState(false);
+  const [isFullScreenLabOpen, setIsFullScreenLabOpen] = useState(false);
 
   const handleRunExecution = () => {
     setIsExecuting(true);
     setTimeout(() => setIsExecuting(false), 800);
   };
+
+  // Agar Fullscreen Lab active hai, toh modular CodeLabMain full screen overlay mein khul jayega
+  if (isFullScreenLabOpen) {
+    return (
+      <div className="fixed inset-0 z-50 w-screen h-screen bg-[#0d0e11] overflow-hidden flex flex-col font-mono">
+        {/* Top bar with Exit button */}
+        <div className="bg-[#12141a] px-6 py-3 border-b border-neutral-800 flex items-center justify-between shrink-0">
+          <div className="text-xs text-neutral-300 font-bold tracking-wider">
+            CODE LAB WORKBENCH // FULLSCREEN MODE
+          </div>
+          <button
+            onClick={() => setIsFullScreenLabOpen(false)}
+            className="px-3 py-1 bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/20 text-xs rounded transition cursor-pointer"
+          >
+            ✕ EXIT FULLSCREEN
+          </button>
+        </div>
+
+        {/* Modular CodeLabMain Component */}
+        <div className="flex-1 overflow-hidden">
+          <CodeLabMain />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <section
@@ -89,16 +116,17 @@ export default function CodeLabSection() {
             </h2>
           </div>
           <div>
-            <a
-              href="#"
-              className="inline-flex items-center gap-2 px-4 py-2 rounded border border-neutral-800 bg-[#141416] hover:bg-neutral-800 text-xs text-neutral-300 font-semibold tracking-wider transition-all"
+            {/* FULLSCREEN LAB BUTTON */}
+            <button
+              onClick={() => setIsFullScreenLabOpen(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded border border-neutral-800 bg-[#141416] hover:bg-neutral-800 text-xs text-neutral-300 font-semibold tracking-wider transition-all cursor-pointer"
             >
               FULLSCREEN LAB <ExternalLink className="w-3.5 h-3.5 text-[#eab308]" />
-            </a>
+            </button>
           </div>
         </motion.div>
 
-        {/* IDE Window Box */}
+        {/* IDE Window Box (Pehle wala original design) */}
         <motion.div
           initial={{ opacity: 0, y: 40 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -126,7 +154,7 @@ export default function CodeLabSection() {
                     <button
                       key={filename}
                       onClick={() => setActiveTab(filename)}
-                      className={`px-3 py-1.5 rounded-t text-xs flex items-center gap-2 transition-all ${
+                      className={`px-3 py-1.5 rounded-t text-xs flex items-center gap-2 transition-all cursor-pointer ${
                         isActive
                           ? "bg-[#121214] text-[#eab308] border-t-2 border-[#eab308]"
                           : "text-neutral-400 hover:text-white bg-transparent"
@@ -143,7 +171,7 @@ export default function CodeLabSection() {
             {/* Run Execution Button */}
             <button
               onClick={handleRunExecution}
-              className="px-4 py-1.5 rounded bg-[#eab308] hover:bg-[#facc15] text-black font-extrabold text-xs tracking-wider transition-all flex items-center gap-2 active:scale-95 shadow-[0_0_15px_rgba(234,179,8,0.25)]"
+              className="px-4 py-1.5 rounded bg-[#eab308] hover:bg-[#facc15] text-black font-extrabold text-xs tracking-wider transition-all flex items-center gap-2 active:scale-95 shadow-[0_0_15px_rgba(234,179,8,0.25)] cursor-pointer"
             >
               <Play className={`w-3.5 h-3.5 fill-black ${isExecuting ? "animate-spin" : ""}`} />
               RUN EXECUTION

@@ -9,6 +9,7 @@ import AiBackgroundLabSection from "@/components/sections/AiBackgroundLabSection
 import GamesSection from "@/components/sections/GamesSection";
 import ContactSection from "@/components/sections/ContactSection";
 
+
 export default function Home() {
   return (
     <main className="min-h-screen bg-[#0a0a0a] text-white selection:bg-[#eab308] selection:text-black">
@@ -23,6 +24,7 @@ export default function Home() {
       <AiBackgroundLabSection/>
       <GamesSection/>
       <ContactSection/>
+      
       {/* Aage ke sections yahan aage aayenge */}
     </main>
   );
