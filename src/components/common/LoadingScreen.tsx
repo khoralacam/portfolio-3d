@@ -130,7 +130,7 @@ export default function LoadingScreen({ onComplete }: LoadingScreenProps) {
         <div className="relative flex items-center justify-center">
           {/* Background Dim Base Text */}
           <h1 className="text-5xl sm:text-7xl md:text-8xl lg:text-[130px] font-black tracking-tighter text-neutral-800 uppercase text-center font-sans">
-            KHORALACAM
+            NAUSHAD
           </h1>
 
           {/* Foreground Electric Yellow Text with Laser Clip Sweep */}
