@@ -5,7 +5,7 @@ import LoadingScreen from "@/components/common/LoadingScreen";
 import "./globals.css";
 
 export const metadata = {
-  title: "KHORALACAM // SYS.08 - 3D Portfolio",
+  title: "NAUSHAD",
   description: "Futuristic 3D Developer Portfolio",
 };
 
