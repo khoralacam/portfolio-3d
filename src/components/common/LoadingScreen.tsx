@@ -140,7 +140,7 @@ export default function LoadingScreen({ onComplete }: LoadingScreenProps) {
             style={{ clipPath: "polygon(0 0, 0% 0, 0% 100%, 0 100%)" }}
           >
             <h1 className="text-5xl sm:text-7xl md:text-8xl lg:text-[130px] font-black tracking-tighter text-[#FFD600] uppercase text-center font-sans drop-shadow-[0_0_35px_rgba(255,214,0,0.4)]">
-              KHORALACAM
+              NAUSHAD
             </h1>
           </div>
 
