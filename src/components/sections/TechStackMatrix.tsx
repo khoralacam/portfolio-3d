@@ -2,66 +2,81 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Code2, Globe, Cpu, Server, Database, Container, Zap, Palette } from "lucide-react";
+import { Code2, Globe, Cpu, Server, Database, Container, Zap, Palette, BrainCircuit, GitBranch } from "lucide-react";
 
-const categories = ["ALL", "FRONTEND", "BACKEND", "DATABASES", "3D & CREATIVE", "DEVOPS"];
+// "DEVELOPER TOOLS" hata diya gaya hai aur "VERSION CONTROL" add kiya hai
+const categories = ["ALL", "FRONTEND", "BACKEND", "DATABASES", "3D & CREATIVE", "DEVOPS & INFRASTRUCTURE", "VERSION CONTROL", "AI & WORKFLOW"];
 
 const techItems = [
   {
-    title: "TypeScript",
-    description: "Strict type safety & compiler AST",
+    title: "HTML5 & CSS3",
+    description: "Semantic markup, responsive layouts & modern styling",
     category: "FRONTEND",
-    tier: "98% // ARCHITECT",
+    tier: "CORE // WEB FUNDAMENTALS",
     icon: Code2,
   },
   {
-    title: "React 19 & Next.js 15",
-    description: "RSC, Turbopack, Edge Middleware",
+    title: "JavaScript & TypeScript",
+    description: "Modern JavaScript, type safety & maintainable code",
     category: "FRONTEND",
-    tier: "95% // PRODUCTION",
+    tier: "CORE // DEVELOPMENT",
     icon: Globe,
   },
   {
-    title: "Three.js & R3F",
-    description: "Custom GLSL shaders, instanced meshes",
-    category: "3D & CREATIVE",
-    tier: "92% // EXPERIMENTAL",
+    title: "React & Next.js",
+    description: "Reusable components, routing & modern React applications",
+    category: "FRONTEND",
+    tier: "CORE // UI ENGINEERING",
     icon: Cpu,
   },
   {
-    title: "Node.js & Go Runtimes",
-    description: "High-concurrency streaming, gRPC",
-    category: "BACKEND",
-    tier: "98% // ENTERPRISE",
-    icon: Server,
-  },
-  {
-    title: "PostgreSQL & Redis",
-    description: "Complex query planning & cache locks",
-    category: "DATABASES",
-    tier: "94% // SCALE",
-    icon: Database,
-  },
-  {
     title: "Docker & Kubernetes",
-    description: "OCI builds, autoscaling, ingress control",
-    category: "DEVOPS",
-    tier: "88% // DEPLOYED",
+    description: "Containerization, container orchestration & deployment workflows",
+    category: "DEVOPS & INFRASTRUCTURE",
+    tier: "DEVOPS // CONTAINERIZATION",
     icon: Container,
   },
   {
-    title: "GSAP & Web Animations",
-    description: "Kinetic timelines, SVG morphing",
+    title: "Node.js & Express.js",
+    description: "REST APIs, backend logic & server-side development",
+    category: "BACKEND",
+    tier: "CORE // SERVER ENGINEERING",
+    icon: Server,
+  },
+  {
+    title: "MongoDB & PostgreSQL",
+    description: "Document databases, relational data & SQL fundamentals",
+    category: "DATABASES",
+    tier: "DEVELOPMENT // DATA LAYER",
+    icon: Database,
+  },
+  {
+    title: "Git & GitHub",
+    description: "Version control, repository management & collaboration",
+    category: "VERSION CONTROL",
+    tier: "CORE // VERSION CONTROL",
+    icon: GitBranch,
+  },
+  {
+    title: "Three.js, GSAP & Motion",
+    description: "Interactive 3D scenes, animation timelines & motion design",
     category: "3D & CREATIVE",
-    tier: "96% // MASTER",
+    tier: "CREATIVE // INTERACTIVE WEB",
     icon: Zap,
   },
   {
-    title: "Tailwind & CSS Tokens",
-    description: "Atomic architecture, dark mode token sets",
+    title: "Tailwind CSS",
+    description: "Responsive UI, utility-first styling & dark theme design",
     category: "FRONTEND",
-    tier: "99% // EXPONENT",
+    tier: "UI // DESIGN SYSTEMS",
     icon: Palette,
+  },
+  {
+    title: "AI-Assisted Development",
+    description: "AI coding tools for implementation, debugging & iteration",
+    category: "AI & WORKFLOW",
+    tier: "AI // DEVELOPMENT WORKFLOW",
+    icon: BrainCircuit,
   },
 ];
 
@@ -104,7 +119,7 @@ export default function TechStackMatrix() {
                 <button
                   key={cat}
                   onClick={() => setSelectedCategory(cat)}
-                  className={`px-3 py-1.5 rounded-md text-[11px] font-semibold tracking-wider transition-all duration-200 ${
+                  className={`px-3 py-1.5 rounded-md text-[11px] font-semibold tracking-wider transition-all duration-200 cursor-pointer ${
                     isActive
                       ? "bg-[#eab308] text-black shadow-[0_0_15px_rgba(234,179,8,0.3)]"
                       : "text-neutral-400 hover:text-white hover:bg-neutral-800/60"
@@ -117,17 +132,17 @@ export default function TechStackMatrix() {
           </div>
         </motion.div>
 
-        {/* Tech Grid Matrix with Framer Motion */}
+        {/* Tech Grid Matrix with key={selectedCategory} for proper re-render */}
         <motion.div 
+          key={selectedCategory}
           initial="hidden"
-          whileInView="show"
-          viewport={{ once: true, margin: "-50px" }}
+          animate="show"
           variants={{
             hidden: { opacity: 0 },
             show: {
               opacity: 1,
               transition: {
-                staggerChildren: 0.1
+                staggerChildren: 0.08
               }
             }
           }}
@@ -137,10 +152,10 @@ export default function TechStackMatrix() {
             const IconComponent = item.icon;
             return (
               <motion.div
-                key={index}
+                key={item.title}
                 variants={{
                   hidden: { opacity: 0, y: 20 },
-                  show: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } }
+                  show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } }
                 }}
                 className="p-6 rounded-lg border border-neutral-800/80 bg-[#121214] hover:border-[#eab308]/50 transition-all duration-300 group flex flex-col justify-between space-y-6"
               >

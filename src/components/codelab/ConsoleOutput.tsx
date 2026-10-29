@@ -1,215 +1,146 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
-import { Terminal, Trash2, ChevronUp, ChevronDown, CheckCircle, AlertCircle, Play } from 'lucide-react';
+import React, { useState } from 'react';
+import { Ban, Trash2, Terminal as TerminalIcon, AlertCircle, Wifi } from 'lucide-react';
+import { useWorkspaceStore } from '@/store/useWorkspaceStore';
+import { BottomTab } from '@/types/workspace';
 
-interface ConsoleOutputProps {
-  onRunScript?: () => void;
-}
+export const ConsoleOutput: React.FC = () => {
+  const {
+    logs,
+    problems,
+    activeBottomTab,
+    setBottomTab,
+    clearLogs,
+    executeTerminalCommand,
+  } = useWorkspaceStore();
 
-interface LogEntry {
-  id: string;
-  type: 'output' | 'error' | 'success' | 'input';
-  text: string;
-  time: string;
-}
-
-export const ConsoleOutput: React.FC<ConsoleOutputProps> = ({ onRunScript }) => {
-  const [isOpen, setIsOpen] = useState(true);
-  const [activeTab, setActiveTab] = useState<'output' | 'terminal' | 'problems'>('terminal');
-  const [inputCommand, setInputCommand] = useState('');
-  
-  const [logs, setLogs] = useState<LogEntry[]>([
-    { id: '1', type: 'success', text: 'Code Lab v2.4 Terminal Initialized [WebGL 2.0 Active]', time: '03:42:00' },
-    { id: '2', type: 'output', text: 'Type "help" to see available runtime commands.', time: '03:42:01' },
-  ]);
-
-  const bottomRef = useRef<HTMLDivElement>(null);
-
-  // Auto scroll to bottom of logs
-  useEffect(() => {
-    if (isOpen) {
-      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [logs, isOpen]);
+  const [cmdInput, setCmdInput] = useState('npm run build');
 
   const handleCommandSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputCommand.trim()) return;
-
-    const currentTime = new Date().toLocaleTimeString();
-    const cmd = inputCommand.trim().toLowerCase();
-
-    // Add user command to logs
-    const newLogs: LogEntry[] = [
-      ...logs,
-      { id: Date.now().toString(), type: 'input', text: `codelab@workspace % ${inputCommand}`, time: currentTime }
-    ];
-
-    // Command processing logic
-    if (cmd === 'clear') {
-      setLogs([]);
-      setInputCommand('');
-      return;
-    } else if (cmd === 'help') {
-      newLogs.push({
-        id: (Date.now() + 1).toString(),
-        type: 'output',
-        text: 'Available commands:\n  • run     - Execute active script & render 3D viewport\n  • clear   - Clear terminal logs\n  • status  - Check system memory & FPS performance\n  • ls      - List workspace files\n  • help    - Show this help menu',
-        time: currentTime
-      });
-    } else if (cmd === 'run') {
-      newLogs.push({
-        id: (Date.now() + 1).toString(),
-        type: 'success',
-        text: 'Executing script... Three.js context refreshed successfully.',
-        time: currentTime
-      });
-      if (onRunScript) onRunScript();
-    } else if (cmd === 'status') {
-      newLogs.push({
-        id: (Date.now() + 1).toString(),
-        type: 'output',
-        text: 'System Status: Memory 42.8MB / 512MB | FPS: 60 | Latency: 14ms | WebGL: Active',
-        time: currentTime
-      });
-    } else if (cmd === 'ls') {
-      newLogs.push({
-        id: (Date.now() + 1).toString(),
-        type: 'output',
-        text: 'Files in workspace:\n  ├── main.ts (Active)\n  ├── style.css\n  └── index.html',
-        time: currentTime
-      });
-    } else {
-      newLogs.push({
-        id: (Date.now() + 1).toString(),
-        type: 'error',
-        text: `zsh: command not found: ${inputCommand}. Type "help" for valid commands.`,
-        time: currentTime
-      });
-    }
-
-    setLogs(newLogs);
-    setInputCommand('');
+    executeTerminalCommand(cmdInput);
+    setCmdInput('');
   };
 
+  const levelBadgeColor = (level: string) => {
+    switch (level) {
+      case 'INFO':
+        return 'text-[#36D399]';
+      case 'SUCCESS':
+        return 'text-[#FFD400] font-bold';
+      case 'VITE':
+        return 'text-[#A3A3A3]';
+      case 'WARN':
+        return 'text-[#FFB020]';
+      case 'ERROR':
+        return 'text-[#FF4D4F]';
+      default:
+        return 'text-[#FFD400]';
+    }
+  };
+
+  const tabs: { id: BottomTab; label: string; badge?: number }[] = [
+    { id: 'CONSOLE', label: 'CONSOLE', badge: logs.length },
+    { id: 'TERMINAL', label: 'TERMINAL' },
+    { id: 'PROBLEMS', label: 'PROBLEMS', badge: problems.length },
+    { id: 'NETWORK', label: 'NETWORK' },
+  ];
+
   return (
-    <div className={`bg-[#08080a] border-t border-[#1c1e24] flex flex-col font-mono text-xs transition-all duration-200 select-none shrink-0 ${isOpen ? 'h-48' : 'h-8'}`}>
-      
-      {/* Terminal Top Navigation Header */}
-      <div className="flex items-center justify-between px-3 bg-[#0d0e11] border-b border-[#1c1e24] h-8 shrink-0">
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => { setActiveTab('terminal'); setIsOpen(true); }}
-            className={`font-bold transition flex items-center gap-1.5 text-[11px] ${activeTab === 'terminal' ? 'text-[#f5e642] border-b-2 border-[#f5e642] pb-0.5' : 'text-neutral-400 hover:text-neutral-200'}`}
-          >
-            <Terminal size={12} />
-            <span>TERMINAL</span>
-          </button>
-          <button
-            onClick={() => { setActiveTab('output'); setIsOpen(true); }}
-            className={`font-bold transition text-[11px] ${activeTab === 'output' ? 'text-[#f5e642] border-b-2 border-[#f5e642] pb-0.5' : 'text-neutral-400 hover:text-neutral-200'}`}
-          >
-            OUTPUT
-          </button>
-          <button
-            onClick={() => { setActiveTab('problems'); setIsOpen(true); }}
-            className={`font-bold transition flex items-center gap-1 text-[11px] ${activeTab === 'problems' ? 'text-[#f5e642] border-b-2 border-[#f5e642] pb-0.5' : 'text-neutral-400 hover:text-neutral-200'}`}
-          >
-            <AlertCircle size={11} className="text-amber-400" />
-            <span>PROBLEMS (0)</span>
-          </button>
+    <section className="h-full bg-[#090909] border-t border-[#292929] flex flex-col justify-between font-mono text-xs select-none">
+      {/* Tab Header */}
+      <div className="h-8 bg-[#111111] border-b border-[#292929] px-2 flex items-center justify-between">
+        <div className="flex items-center h-full">
+          {tabs.map((tab) => {
+            const isActive = activeBottomTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setBottomTab(tab.id)}
+                className={`h-full px-3 flex items-center gap-1.5 border-r border-[#292929] text-[11px] transition-colors ${
+                  isActive
+                    ? 'bg-[#090909] text-[#FFD400] border-b-2 border-b-[#FFD400] font-bold'
+                    : 'text-[#A3A3A3] hover:text-[#F5F5F5]'
+                }`}
+              >
+                <span>{tab.label}</span>
+                {typeof tab.badge === 'number' && (
+                  <span className="px-1 py-0.2 bg-[#1f1d11] text-[#FFD400] rounded text-[10px]">
+                    {tab.badge}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
 
-        <div className="flex items-center gap-2">
-          {onRunScript && (
-            <button
-              onClick={onRunScript}
-              className="flex items-center gap-1 bg-[#f5e642]/10 border border-[#f5e642]/30 text-[#f5e642] px-2 py-0.5 rounded text-[10px] hover:bg-[#f5e642]/20 transition"
-              title="Run Script"
-            >
-              <Play size={10} />
-              <span>Run</span>
-            </button>
-          )}
+        <div className="flex items-center gap-2 text-[#A3A3A3]">
           <button
-            onClick={() => setLogs([])}
-            className="p-1 hover:text-[#f5e642] text-neutral-400 transition"
-            title="Clear Terminal"
+            onClick={clearLogs}
+            title="Clear Console"
+            className="p-1 hover:text-[#F5F5F5]"
           >
-            <Trash2 size={13} />
+            <Ban className="w-3.5 h-3.5" />
           </button>
           <button
-            onClick={() => setIsOpen(!isOpen)}
-            className="p-1 hover:text-[#f5e642] text-neutral-400 transition"
-            title={isOpen ? 'Collapse Terminal' : 'Expand Terminal'}
+            onClick={clearLogs}
+            title="Delete Logs"
+            className="p-1 hover:text-[#FF4D4F]"
           >
-            {isOpen ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
+            <Trash2 className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
 
-      {/* Terminal Body Area */}
-      {isOpen && (
-        <div className="flex-1 flex flex-col justify-between overflow-hidden p-2.5 bg-[#08080a]">
-          
-          {/* Logs Viewport */}
-          <div className="flex-1 overflow-y-auto space-y-1.5 text-[11px] pr-2">
-            {activeTab === 'terminal' && (
-              <>
-                {logs.map((log) => (
-                  <div key={log.id} className="leading-relaxed">
-                    {log.type === 'input' ? (
-                      <div className="text-[#f5e642] font-semibold">{log.text}</div>
-                    ) : (
-                      <div className="flex items-start gap-2">
-                        <span className="text-neutral-600 select-none">[{log.time}]</span>
-                        {log.type === 'success' && <CheckCircle size={12} className="text-emerald-400 mt-0.5 shrink-0" />}
-                        {log.type === 'error' && <AlertCircle size={12} className="text-red-400 mt-0.5 shrink-0" />}
-                        <pre className={`whitespace-pre-wrap font-mono ${log.type === 'error' ? 'text-red-300' : log.type === 'success' ? 'text-emerald-300' : 'text-neutral-300'}`}>
-                          {log.text}
-                        </pre>
-                      </div>
-                    )}
-                  </div>
-                ))}
-                <div ref={bottomRef} />
-              </>
-            )}
-
-            {activeTab === 'output' && (
-              <div className="text-neutral-300 space-y-1">
-                <div className="text-neutral-500">[Server] Starting Webpack & Three.js compiler...</div>
-                <div className="text-emerald-400">[Bundler] Compiled main.ts successfully in 142ms.</div>
-                <div className="text-neutral-300">WebGLRenderer context initialized. Canvas viewport ready.</div>
-              </div>
-            )}
-
-            {activeTab === 'problems' && (
-              <div className="text-neutral-500 italic py-2">
-                No syntax errors or warnings detected in workspace. All systems operational.
-              </div>
-            )}
+      {/* Log Stream Body */}
+      <div className="flex-1 p-2.5 overflow-y-auto space-y-1.5 select-text">
+        {activeBottomTab === 'CONSOLE' || activeBottomTab === 'TERMINAL' ? (
+          logs.map((entry) => (
+            <div key={entry.id} className="leading-relaxed text-[11px]">
+              <span className={`${levelBadgeColor(entry.level)} mr-2`}>
+                [{entry.level}]
+              </span>
+              <span className="text-[#A3A3A3] mr-2">{entry.timestamp}</span>
+              <span
+                className={
+                  entry.level === 'SUCCESS'
+                    ? 'text-[#FFD400] font-semibold'
+                    : 'text-[#F5F5F5]'
+                }
+              >
+                {entry.message}
+              </span>
+            </div>
+          ))
+        ) : activeBottomTab === 'PROBLEMS' ? (
+          <div className="text-[#A3A3A3] flex items-center gap-2 py-2">
+            <AlertCircle className="w-4 h-4 text-[#36D399]" />
+            <span>No TypeScript or ESLint problems detected in workspace.</span>
           </div>
+        ) : (
+          <div className="text-[#A3A3A3] flex items-center gap-2 py-2">
+            <Wifi className="w-4 h-4 text-[#FFD400]" />
+            <span>Sandboxed iframe network isolation active. 0 external XHR requests.</span>
+          </div>
+        )}
+      </div>
 
-          {/* Interactive Command Input Form (VS Code Style) */}
-          {activeTab === 'terminal' && (
-            <form onSubmit={handleCommandSubmit} className="flex items-center gap-2 pt-2 border-t border-[#16181e] mt-1">
-              <span className="text-[#f5e642] font-bold select-none">codelab@workspace %</span>
-              <input
-                type="text"
-                value={inputCommand}
-                onChange={(e) => setInputCommand(e.target.value)}
-                placeholder="Type command (e.g. 'help', 'run', 'status')..."
-                className="flex-1 bg-transparent text-white outline-none font-mono text-[11px] placeholder:text-neutral-600"
-                spellCheck={false}
-                autoFocus
-              />
-            </form>
-          )}
-
-        </div>
-      )}
-    </div>
+      {/* Interactive Command Prompt Bar */}
+      <form
+        onSubmit={handleCommandSubmit}
+        className="h-8 bg-[#0d0d0d] border-t border-[#292929] px-3 flex items-center gap-2"
+      >
+        <TerminalIcon className="w-3.5 h-3.5 text-[#FFD400]" />
+        <span className="text-[#FFD400] font-bold">&gt;</span>
+        <input
+          type="text"
+          value={cmdInput}
+          onChange={(e) => setCmdInput(e.target.value)}
+          placeholder="Type a command (e.g. npm run build, ls, clear)..."
+          className="w-full bg-transparent text-[#FFD400] text-xs focus:outline-none placeholder-[#525252]"
+        />
+      </form>
+    </section>
   );
 };

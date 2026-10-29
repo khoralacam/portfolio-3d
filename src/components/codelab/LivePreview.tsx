@@ -1,231 +1,337 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
-import * as THREE from 'three';
+import React, { useMemo, useEffect } from 'react';
+import { Monitor, Tablet, Smartphone, RotateCw } from 'lucide-react';
+import { useWorkspaceStore } from '@/store/useWorkspaceStore';
 
-interface LivePreviewProps {
-  code?: string;
-  width?: number;
-  onWidthChange?: (newWidth: number) => void;
-}
+export const LivePreview: React.FC = () => {
+  const {
+    files,
+    activeFileId,
+    previewVersion,
+    viewportMode,
+    setViewportMode,
+    runProject,
+    addLog,
+  } = useWorkspaceStore();
 
-export const LivePreview: React.FC<LivePreviewProps> = ({
-  code = '',
-  width = 480,
-  onWidthChange,
-}) => {
-  const mountRef = useRef<HTMLDivElement>(null);
-  const [fps, setFps] = useState(60);
-  const [verticesCount, setVerticesCount] = useState(2562);
-  const [isResizing, setIsResizing] = useState(false);
-  const [coords, setCoords] = useState('[0.00, 0.00, +6.20]');
-
-  // Resizable Handle Dragging Logic
-  const handleMouseDown = (e: React.MouseEvent) => {
-    e.preventDefault();
-    setIsResizing(true);
-
-    const handleMouseMove = (moveEvent: MouseEvent) => {
-      const newWidth = Math.max(260, Math.min(800, window.innerWidth - moveEvent.clientX));
-      if (onWidthChange) onWidthChange(newWidth);
-    };
-
-    const handleMouseUp = () => {
-      setIsResizing(false);
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
-    };
-
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
-  };
-
-  // Three.js High-Fidelity 3D Viewport Setup
+  // Listen for console.log, console.error, and runtime errors from the sandboxed iframe
   useEffect(() => {
-    const container = mountRef.current;
-    if (!container) return;
+    const handleMessage = (event: MessageEvent) => {
+      const data = event.data;
+      if (!data || typeof data !== 'object') return;
 
-    // 1. Scene & Camera Setup
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(
-      60,
-      container.clientWidth / container.clientHeight,
-      0.1,
-      1000
+      if (data.type === 'SANDBOX_LOG') {
+        addLog(data.level || 'INFO', String(data.message));
+      } else if (data.type === 'RUNTIME_ERROR') {
+        addLog('ERROR', `Runtime Error: ${data.message}`);
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [addLog]);
+
+  const { srcDoc, isWebGLMode } = useMemo(() => {
+    const fileList = Object.values(files).filter((f) => f.type === 'file');
+    const activeFile = files[activeFileId];
+
+    // 1. Find target HTML file (active .html file, or index.html, or any .html file)
+    const htmlFile =
+      (activeFile?.name.endsWith('.html') ? activeFile : undefined) ||
+      fileList.find((f) => f.name === 'index.html') ||
+      fileList.find((f) => f.name.endsWith('.html'));
+
+    // 2. Gather all CSS files in workspace
+    const cssContent = fileList
+      .filter((f) => f.name.endsWith('.css'))
+      .map((f) => f.content || '')
+      .join('\n');
+
+    // 3. Gather all JS/TS files in workspace (excluding starter Three.js if user wrote custom HTML)
+    const jsFiles = fileList.filter(
+      (f) => f.name.endsWith('.js') || f.name.endsWith('.ts')
     );
-    camera.position.z = 6.2;
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    renderer.setSize(container.clientWidth, container.clientHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    container.appendChild(renderer.domElement);
+    const rawHtml = htmlFile?.content || '';
+    // Strip accidental leading "// index.html" comment if present
+    const cleanedHtml = rawHtml.replace(/^\/\/\s*.*\n/, '');
 
-    // 2. Beautiful 3D Object Group (Main Wireframe + Inner Core + Particles)
-    const mainGroup = new THREE.Group();
-    scene.add(mainGroup);
+    // Check if the workspace is still using the starter Three.js WebGL canvas
+    const usesStarterWebGL =
+      cleanedHtml.includes('id="canvas-viewport"') &&
+      Boolean(files['file-main-ts']);
 
-    // Outer Neon Wireframe Shape
-    const outerGeo = new THREE.IcosahedronGeometry(2.6, 3);
-    const outerMat = new THREE.MeshStandardMaterial({
-      color: 0xf5e642,
-      wireframe: true,
-      roughness: 0.1,
-      metalness: 0.9,
-    });
-    const outerMesh = new THREE.Mesh(outerGeo, outerMat);
-    mainGroup.add(outerMesh);
+    // Console bridge injected into every preview so console.log works in CONSOLE panel
+    const consoleBridgeScript = `
+      <script>
+        (function() {
+          const send = (level, args) => {
+            try {
+              const msg = Array.from(args).map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ');
+              window.parent.postMessage({ type: 'SANDBOX_LOG', level, message: msg }, '*');
+            } catch (e) {}
+          };
+          const origLog = console.log;
+          const origWarn = console.warn;
+          const origErr = console.error;
+          console.log = function() { send('INFO', arguments); origLog.apply(console, arguments); };
+          console.warn = function() { send('WARN', arguments); origWarn.apply(console, arguments); };
+          console.error = function() { send('ERROR', arguments); origErr.apply(console, arguments); };
+          window.addEventListener('error', function(e) {
+            window.parent.postMessage({ type: 'RUNTIME_ERROR', message: e.message + ' (line ' + e.lineno + ')' }, '*');
+          });
+        })();
+      </script>
+    `;
 
-    // Inner Glowing Solid Core
-    const innerGeo = new THREE.IcosahedronGeometry(1.4, 2);
-    const innerMat = new THREE.MeshBasicMaterial({
-      color: 0xf5e642,
-      wireframe: true,
-      transparent: true,
-      opacity: 0.35,
-    });
-    const innerMesh = new THREE.Mesh(innerGeo, innerMat);
-    mainGroup.add(innerMesh);
+    // CASE A: Starter Three.js WebGL Orb Mode
+    if (usesStarterWebGL) {
+      const mainTs = files['file-main-ts']?.content || '';
+      const colorMatch = mainTs.match(/color:\s*(0x[0-9a-fA-F]+)/);
+      const hexColor = colorMatch ? colorMatch[1] : '0xF5E642';
 
-    // Surrounding Quantum Particles
-    const particleGeo = new THREE.BufferGeometry();
-    const particleCount = 200;
-    const posArray = new Float32Array(particleCount * 3);
+      return {
+        isWebGLMode: true,
+        srcDoc: `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <style>${cssContent}</style>
+  ${consoleBridgeScript}
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+  <canvas id="canvas-viewport"></canvas>
+  <script>
+    (function() {
+      try {
+        const canvas = document.getElementById('canvas-viewport');
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
 
-    for (let i = 0; i < particleCount * 3; i++) {
-      posArray[i] = (Math.random() - 0.5) * 10;
+        const ringGeo = new THREE.RingGeometry(3.1, 3.13, 64);
+        const ringMat = new THREE.MeshBasicMaterial({ color: ${hexColor}, side: THREE.DoubleSide, transparent: true, opacity: 0.2 });
+        scene.add(new THREE.Mesh(ringGeo, ringMat));
+
+        const geometry = new THREE.IcosahedronGeometry(2.3, 1);
+        const wireframe = new THREE.WireframeGeometry(geometry);
+        const lineMat = new THREE.LineBasicMaterial({ color: ${hexColor}, transparent: true, opacity: 0.85 });
+        const orb = new THREE.LineSegments(wireframe, lineMat);
+        scene.add(orb);
+
+        const pointsMat = new THREE.PointsMaterial({ color: 0xFFFFFF, size: 0.09 });
+        orb.add(new THREE.Points(geometry, pointsMat));
+
+        camera.position.z = 6.2;
+
+        window.addEventListener('resize', () => {
+          camera.aspect = window.innerWidth / window.innerHeight;
+          camera.updateProjectionMatrix();
+          renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        function animate() {
+          requestAnimationFrame(animate);
+          orb.rotation.x += 0.004;
+          orb.rotation.y += 0.007;
+          renderer.render(scene, camera);
+        }
+        animate();
+      } catch (err) {
+        window.parent.postMessage({ type: 'RUNTIME_ERROR', message: err.message }, '*');
+      }
+    })();
+  </script>
+</body>
+</html>`,
+      };
     }
-    particleGeo.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
-    const particleMat = new THREE.PointsMaterial({
-      size: 0.03,
-      color: 0xf5e642,
-      transparent: true,
-      opacity: 0.8,
-    });
-    const particles = new THREE.Points(particleGeo, particleMat);
-    mainGroup.add(particles);
 
-    // 3. Lighting
-    const pointLight = new THREE.PointLight(0xf5e642, 4, 20);
-    pointLight.position.set(5, 5, 5);
-    scene.add(pointLight);
+    // CASE B: Real Custom HTML / CSS / JS Execution Mode
+    const customJsCode = jsFiles
+      .filter((f) => f.id !== 'file-main-ts')
+      .map((f) => f.content || '')
+      .join('\n;\n');
 
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-    scene.add(ambientLight);
+    // If user wrote only a .js/.ts file without HTML, run the JS file directly
+    if (!htmlFile && activeFile && (activeFile.name.endsWith('.js') || activeFile.name.endsWith('.ts'))) {
+      return {
+        isWebGLMode: false,
+        srcDoc: `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <style>
+    body { background: #0d0d0d; color: #f5f5f5; font-family: 'JetBrains Mono', monospace; padding: 16px; }
+  </style>
+  ${consoleBridgeScript}
+</head>
+<body>
+  <div id="app">Running ${activeFile.name}... Check Console output below.</div>
+  <script>
+    try {
+      ${activeFile.content || ''}
+    } catch (err) {
+      console.error(err.message);
+    }
+  </script>
+</body>
+</html>`,
+      };
+    }
 
-    setVerticesCount(outerGeo.attributes.position.count * 3);
+    // Standard HTML + CSS + JS injection
+    const defaultDarkReset = `
+      body {
+        margin: 0;
+        padding: 16px;
+        background: #0d0d0d;
+        color: #f5f5f5;
+        font-family: system-ui, -apple-system, sans-serif;
+      }
+    `;
 
-    // 4. Mouse Rotation Interaction
-    let mouseX = 0;
-    let mouseY = 0;
-    const handleMouseMove = (e: MouseEvent) => {
-      const rect = container.getBoundingClientRect();
-      mouseX = ((e.clientX - rect.left) / container.clientWidth) * 2 - 1;
-      mouseY = -((e.clientY - rect.top) / container.clientHeight) * 2 + 1;
-      setCoords(`[${mouseX.toFixed(2)}, ${mouseY.toFixed(2)}, +6.20]`);
-    };
-    container.addEventListener('mousemove', handleMouseMove);
+    let finalDoc = cleanedHtml;
 
-    // 5. Animation Loop
-    let animationFrameId: number;
-    let lastTime = performance.now();
-    let frames = 0;
-
-    const animate = () => {
-      const now = performance.now();
-      frames++;
-      if (now - lastTime >= 1000) {
-        setFps(Math.round((frames * 1000) / (now - lastTime)));
-        frames = 0;
-        lastTime = now;
+    // If user wrote a full <!DOCTYPE html> or <html> document
+    if (/<html[\s>]/i.test(finalDoc)) {
+      if (/<\/head>/i.test(finalDoc)) {
+        finalDoc = finalDoc.replace(
+          /<\/head>/i,
+          `<style>${defaultDarkReset}\n${cssContent}</style>${consoleBridgeScript}</head>`
+        );
+      } else {
+        finalDoc = `${consoleBridgeScript}<style>${defaultDarkReset}\n${cssContent}</style>` + finalDoc;
       }
 
-      // Smooth Rotations
-      outerMesh.rotation.x += 0.004;
-      outerMesh.rotation.y += 0.007;
-
-      innerMesh.rotation.x -= 0.008;
-      innerMesh.rotation.y -= 0.005;
-
-      particles.rotation.y += 0.002;
-
-      // Mouse Parallax Effect
-      mainGroup.rotation.y += (mouseX * 0.5 - mainGroup.rotation.y) * 0.05;
-      mainGroup.rotation.x += (-mouseY * 0.5 - mainGroup.rotation.x) * 0.05;
-
-      renderer.render(scene, camera);
-      animationFrameId = requestAnimationFrame(animate);
-    };
-
-    animate();
-
-    // 6. Handle Panel Resize & Canvas Adjustments
-    const handleResize = () => {
-      if (!container) return;
-      camera.aspect = container.clientWidth / container.clientHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(container.clientWidth, container.clientHeight);
-    };
-
-    window.addEventListener('resize', handleResize);
-    const resizeObserver = new ResizeObserver(() => handleResize());
-    resizeObserver.observe(container);
-
-    return () => {
-      window.removeEventListener('resize', handleResize);
-      container.removeEventListener('mousemove', handleMouseMove);
-      resizeObserver.disconnect();
-      cancelAnimationFrame(animationFrameId);
-      if (container.contains(renderer.domElement)) {
-        container.removeChild(renderer.domElement);
+      if (customJsCode.trim()) {
+        if (/<\/body>/i.test(finalDoc)) {
+          finalDoc = finalDoc.replace(
+            /<\/body>/i,
+            `<script>\ntry {\n${customJsCode}\n} catch(err) { console.error(err.message); }\n</script></body>`
+          );
+        } else {
+          finalDoc += `<script>\ntry {\n${customJsCode}\n} catch(err) { console.error(err.message); }\n</script>`;
+        }
       }
-      outerGeo.dispose();
-      outerMat.dispose();
-      innerGeo.dispose();
-      innerMat.dispose();
-      particleGeo.dispose();
-      particleMat.dispose();
+    } else {
+      // Partial HTML snippet
+      finalDoc = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>${defaultDarkReset}\n${cssContent}</style>
+  ${consoleBridgeScript}
+</head>
+<body>
+  ${finalDoc}
+  <script>
+    try {
+      ${customJsCode}
+    } catch (err) {
+      console.error(err.message);
+    }
+  </script>
+</body>
+</html>`;
+    }
+
+    return {
+      isWebGLMode: false,
+      srcDoc: finalDoc,
     };
-  }, [code]);
+  }, [files, activeFileId, previewVersion]);
+
+  const widthClass =
+    viewportMode === 'mobile'
+      ? 'w-[375px]'
+      : viewportMode === 'tablet'
+      ? 'w-[768px]'
+      : 'w-full';
 
   return (
-    <div
-      style={{ width: `${width}px` }}
-      className="bg-[#08080a] border-l border-[#1c1e24] relative flex flex-col justify-between p-3 select-none shrink-0 h-full overflow-hidden"
-    >
-      {/* Resizable Left Border Drag Handle */}
-      <div
-        onMouseDown={handleMouseDown}
-        className={`absolute top-0 left-0 w-2 h-full cursor-col-resize hover:bg-[#f5e642]/60 transition-all z-30 ${
-          isResizing ? 'bg-[#f5e642]' : 'bg-transparent'
-        }`}
-        title="Drag left to widen live preview"
-      />
-
-      {/* Top Overlay HUD Stats */}
-      <div className="flex items-center justify-between text-[10px] font-mono z-10">
-        <div className="flex items-center gap-2 text-emerald-400">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-          <span className="font-bold tracking-wider">3D LIVE VIEWPORT</span>
-          <span className="text-neutral-600">•</span>
-          <span>{fps} FPS</span>
+    <section className="h-full bg-[#0d0d0d] flex flex-col justify-between font-mono select-none">
+      {/* Top Preview Header */}
+      <div className="h-9 bg-[#111111] border-b border-[#292929] px-3 flex items-center justify-between text-xs">
+        <div className="flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-[#36D399]" />
+          <span className="font-bold text-[#F5F5F5]">LIVE PREVIEW</span>
+          <span className="text-[#36D399]">
+            {isWebGLMode ? '• 60 FPS' : '• DOM SANDBOX'}
+          </span>
         </div>
-        <div className="text-right text-neutral-500 font-mono leading-tight">
-          <div>CANVAS: {width}px</div>
-          <div>VERTICES: {verticesCount.toLocaleString()}</div>
+
+        <div className="flex items-center gap-1.5 text-[#A3A3A3]">
+          <button
+            onClick={() => setViewportMode('desktop')}
+            className={`p-1 rounded-sm ${
+              viewportMode === 'desktop'
+                ? 'text-[#FFD400] bg-[#1f1f1f]'
+                : 'hover:text-[#F5F5F5]'
+            }`}
+          >
+            <Monitor className="w-3.5 h-3.5" />
+          </button>
+          <button
+            onClick={() => setViewportMode('tablet')}
+            className={`p-1 rounded-sm ${
+              viewportMode === 'tablet'
+                ? 'text-[#FFD400] bg-[#1f1f1f]'
+                : 'hover:text-[#F5F5F5]'
+            }`}
+          >
+            <Tablet className="w-3.5 h-3.5" />
+          </button>
+          <button
+            onClick={() => setViewportMode('mobile')}
+            className={`p-1 rounded-sm ${
+              viewportMode === 'mobile'
+                ? 'text-[#FFD400] bg-[#1f1f1f]'
+                : 'hover:text-[#F5F5F5]'
+            }`}
+          >
+            <Smartphone className="w-3.5 h-3.5" />
+          </button>
+          <button
+            onClick={runProject}
+            title="Refresh Sandboxed Preview"
+            className="p-1 hover:text-[#FFD400] ml-1"
+          >
+            <RotateCw className="w-3.5 h-3.5" />
+          </button>
         </div>
       </div>
 
-      {/* Three.js Render Mount */}
-      <div
-        ref={mountRef}
-        className="flex-1 w-full h-full relative cursor-grab active:cursor-grabbing my-1"
-      />
+      {/* Sandboxed Viewport Container */}
+      <div className="flex-1 relative flex items-center justify-center overflow-hidden bg-[#0d0d0d]">
+        {isWebGLMode && (
+          <div className="absolute top-3 left-3 z-10 bg-[#151515]/90 border border-[#292929] px-2.5 py-1.5 rounded-sm text-[11px] leading-tight pointer-events-none">
+            <div className="text-[#FFD400] font-bold">RES: 544 × 604</div>
+            <div className="text-[#A3A3A3]">VERTICES: 2,562</div>
+          </div>
+        )}
 
-      {/* Bottom Status Info */}
-      <div className="flex items-center justify-between text-[9px] font-mono text-neutral-500 z-10 border-t border-[#1a1c23] pt-1.5">
-        <span className="text-[#f5e642] font-semibold">WEBGL 2.0 • THREE.JS</span>
-        <span>COORD: {coords}</span>
+        <iframe
+          key={previewVersion}
+          title="Sandboxed Runtime Preview"
+          sandbox="allow-scripts"
+          srcDoc={srcDoc}
+          className={`h-full ${widthClass} border-0 transition-all duration-200 bg-[#0d0d0d]`}
+        />
+
+        {isWebGLMode && (
+          <div className="absolute bottom-2.5 right-3 z-10 text-[11px] text-[#A3A3A3] pointer-events-none">
+            COORD: [0.00, 0.00, +6.20]
+          </div>
+        )}
       </div>
-    </div>
+    </section>
   );
 };
+
+export default LivePreview;

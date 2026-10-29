@@ -22,15 +22,20 @@ export default function Navbar() {
   const navContainerRef = useRef<HTMLDivElement>(null);
 
   // Live UTC-7 SF Clock Logic
-  useEffect(() => {
+ useEffect(() => {
     const updateClock = () => {
       const now = new Date();
-      // Offset for UTC-7 (San Francisco)
-      const sfTime = new Date(now.getTime() - (7 * 60 + now.getTimezoneOffset()) * 60000);
-      const hours = String(sfTime.getHours()).padStart(2, "0");
-      const minutes = String(sfTime.getMinutes()).padStart(2, "0");
-      const seconds = String(sfTime.getSeconds()).padStart(2, "0");
-      setTimeString(`${hours}:${minutes}:${seconds}`);
+      
+      // India (IST) time format karne ke liye
+      const indiaTimeStr = new Intl.DateTimeFormat("en-GB", {
+        timeZone: "Asia/Kolkata",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false, // 24-hour format ke liye (agar 12-hour chahiye toh true kar dein)
+      }).format(now);
+
+      setTimeString(indiaTimeStr);
     };
 
     updateClock();
@@ -61,19 +66,19 @@ export default function Navbar() {
         {/* 1. Left Logo Section */}
         <a href="#home" className="flex items-center gap-3 group">
           <div className="w-8 h-8 rounded-md bg-[#eab308] text-black font-extrabold flex items-center justify-center text-sm shadow-[0_0_15px_rgba(234,179,8,0.4)] group-hover:scale-105 transition-transform">
-            AL
+            Nk
           </div>
           <div className="flex items-center gap-1.5 font-bold text-white text-sm">
-            <span>LEVIN</span>
+            <span>Naushad</span>
             <span className="text-[#eab308]">//</span>
-            <span className="text-[#eab308]">SYS.08</span>
+            <span className="text-[#eab308]"></span>
           </div>
         </a>
 
         {/* 2. Availability Status Badge (Hidden on mobile/tablet) */}
         <div className="hidden xl:flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-neutral-800 bg-neutral-950/60 text-neutral-400">
           <span className="w-2 h-2 rounded-full bg-[#eab308] animate-pulse" />
-          <span>AVAILABLE Q2/Q3 • GLOBAL REMOTE</span>
+          <span>AVAILABLE FOR PROJECTS • WORLDWIDE</span>
         </div>
 
         {/* 3. Center Navigation Capsule (Desktop Only) */}
@@ -105,11 +110,11 @@ export default function Navbar() {
         {/* 4. Live SF Time Badge (Hidden on small mobile) */}
         <div className="hidden md:flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-neutral-800 bg-neutral-950/60 text-neutral-400">
           <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-          <span className="text-neutral-300">SF_CA</span>
+          <span className="text-neutral-300">TM</span>
           <span className="font-bold text-[#eab308] min-w-[65px]">
             {timeString || "11:04:33"}
           </span>
-          <span className="text-[10px] text-neutral-500">UTC-7</span>
+          <span className="text-[10px] text-neutral-500">IST / UTC+5:30</span>
         </div>
 
         {/* Right Side Actions Container */}

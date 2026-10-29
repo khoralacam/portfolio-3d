@@ -36,19 +36,19 @@ export default function HeroSection() {
           {/* System Status Badge */}
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-md border border-neutral-800 bg-neutral-900/60 text-xs text-neutral-400 hero-anim">
             <span className="w-2 h-2 rounded-full bg-[#eab308] animate-pulse" />
-            <span className="tracking-widest">SYSTEM STATUS: OPERATIONAL // INDEPENDENT DEVELOPER</span>[cite: 4]
+            <span className="tracking-widest">SYSTEM STATUS: ONLINE // INDEPENDENT DEVELOPER</span>
           </div>
 
           {/* Main Headline */}
           <h1 className="text-4xl sm:text-6xl xl:text-7xl font-black tracking-tight leading-[1.05] hero-anim">
-            I BUILD DIGITAL <br />
-            <span className="text-[#eab308]">EXPERIENCES</span> <br />
-            & 3D WORLDS[cite: 4]
+           I ENGINEER DIGITAL <br />
+            <span className="text-[#eab308]">EXPERIENCES &</span> <br />
+            IMMERSIVE 3D WORLDS
           </h1>
 
           {/* Description Paragraph */}
           <p className="text-neutral-400 text-sm sm:text-base max-w-2xl leading-relaxed font-sans hero-anim">
-            Senior Full Stack Architect engineering low-latency distributed microservices, GPU-accelerated WebGL environments, and responsive speculative user interfaces. Merging deep compute with spatial sensory graphics.[cite: 4]
+          Creating interactive 3D worlds and intelligent web experiences by blending AI-powered development, modern engineering, and experimental design.
           </p>
 
           {/* Action Buttons */}
@@ -57,14 +57,14 @@ export default function HeroSection() {
               href="#projects"
               className="px-6 py-3 rounded-md bg-[#eab308] hover:bg-[#facc15] text-black font-extrabold text-xs tracking-wider transition-all shadow-[0_0_20px_rgba(234,179,8,0.35)] flex items-center gap-2 active:scale-95"
             >
-              EXPLORE MY WORK →[cite: 4]
+              EXPLORE MY WORK →
             </a>
             <a
               href="#codelab"
               className="px-6 py-3 rounded-md border border-neutral-800 bg-neutral-900/40 hover:bg-neutral-800 text-white font-semibold text-xs tracking-wider transition-all flex items-center gap-2 active:scale-95"
             >
               <Terminal className="w-4 h-4 text-[#eab308]" />
-              ENTER 3D PLAYGROUND[cite: 4]
+              ENTER THE CODE WORLD
             </a>
           </div>
 
@@ -72,15 +72,15 @@ export default function HeroSection() {
           <div className="grid grid-cols-3 gap-6 pt-8 border-t border-neutral-900 text-xs hero-anim">
             <div>
               <p className="text-neutral-500 text-[10px]">ARCH</p>
-              <p className="font-bold text-white tracking-wider mt-0.5">HYBRID 3D</p>[cite: 4]
+              <p className="font-bold text-white tracking-wider mt-0.5">HYBRID 3D</p>
             </div>
             <div>
               <p className="text-neutral-500 text-[10px]">ENGINE</p>
-              <p className="font-bold text-[#eab308] tracking-wider mt-0.5">WEBGL 2.0</p>[cite: 4]
+              <p className="font-bold text-[#eab308] tracking-wider mt-0.5">THREE.JS</p>
             </div>
             <div>
               <p className="text-neutral-500 text-[10px]">PIPELINE</p>
-              <p className="font-bold text-white tracking-wider mt-0.5">NEXT.JS 15</p>[cite: 4]
+              <p className="font-bold text-white tracking-wider mt-0.5">NEXT.JS + TYPESCRIPT</p>
             </div>
           </div>
 
@@ -121,7 +121,7 @@ export default function HeroSection() {
       {/* Scroll Indicator */}
       <div className="absolute bottom-4 left-6 hidden xl:flex items-center gap-2 text-[10px] text-neutral-500">
         <span className="w-1.5 h-1.5 rounded-full bg-[#eab308] animate-bounce" />
-        <span>SCROLL TO INITIALIZE RUNTIME</span>[cite: 4]
+        <span>SCROLL TO INITIALIZE RUNTIME</span>
       </div>
     </section>
   );

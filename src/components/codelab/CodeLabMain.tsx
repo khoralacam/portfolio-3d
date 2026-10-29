@@ -1,49 +1,142 @@
-// src/components/codelab/CodeLabMain.tsx
-import React, { useState } from 'react';
+'use client';
+
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { HeaderBar } from './HeaderBar';
 import { FileExplorer } from './FileExplorer';
 import { CodeEditorArea } from './CodeEditorArea';
 import { LivePreview } from './LivePreview';
 import { ConsoleOutput } from './ConsoleOutput';
+import { useWorkspaceStore } from '@/store/useWorkspaceStore';
 
-export const CodeLabMain = () => {
-  const [isFullScreen, setIsFullScreen] = useState(false);
+export const CodeLabMain: React.FC = () => {
+  const { saveActiveFile, setCommandPaletteOpen } = useWorkspaceStore();
+
+  // Panel widths in percentages (Explorer | Editor | Right Pane)
+  const [explorerWidth, setExplorerWidth] = useState<number>(18);
+  const [rightPaneWidth, setRightPaneWidth] = useState<number>(38);
+  // Right vertical split (LivePreview height % vs ConsoleOutput height %)
+  const [previewHeight, setPreviewHeight] = useState<number>(62);
+
+  const containerRef = useRef<HTMLDivElement>(null);
+  const rightPaneRef = useRef<HTMLDivElement>(null);
+  const draggingRef = useRef<'left' | 'right' | 'vertical' | null>(null);
+
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (!draggingRef.current) return;
+
+    if (
+      (draggingRef.current === 'left' || draggingRef.current === 'right') &&
+      containerRef.current
+    ) {
+      const rect = containerRef.current.getBoundingClientRect();
+      const relX = ((e.clientX - rect.left) / rect.width) * 100;
+
+      if (draggingRef.current === 'left') {
+        setExplorerWidth(Math.min(30, Math.max(12, relX)));
+      } else if (draggingRef.current === 'right') {
+        const fromRight = 100 - relX;
+        setRightPaneWidth(Math.min(55, Math.max(24, fromRight)));
+      }
+    } else if (draggingRef.current === 'vertical' && rightPaneRef.current) {
+      const rect = rightPaneRef.current.getBoundingClientRect();
+      const relY = ((e.clientY - rect.top) / rect.height) * 100;
+      setPreviewHeight(Math.min(82, Math.max(25, relY)));
+    }
+  }, []);
+
+  const handleMouseUp = useCallback(() => {
+    draggingRef.current = null;
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+  }, []);
+
+  useEffect(() => {
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [handleMouseMove, handleMouseUp]);
+
+  // Global IDE Keyboard Shortcuts (Ctrl+S, Ctrl+Shift+P)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        saveActiveFile();
+      }
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'p') {
+        e.preventDefault();
+        setCommandPaletteOpen(true);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [saveActiveFile, setCommandPaletteOpen]);
+
+  const startDrag = (type: 'left' | 'right' | 'vertical') => {
+    draggingRef.current = type;
+    document.body.style.cursor =
+      type === 'vertical' ? 'row-resize' : 'col-resize';
+    document.body.style.userSelect = 'none';
+  };
+
+  const editorWidth = 100 - explorerWidth - rightPaneWidth;
 
   return (
-    <section
-      className={`transition-all duration-300 bg-[#0d0e11] font-mono flex flex-col ${
-        isFullScreen
-          ? 'fixed inset-0 z-50 w-screen h-screen rounded-none border-0 m-0'
-          : 'w-full max-w-7xl mx-auto my-8 h-[700px] rounded-xl overflow-hidden border border-yellow-500/30 shadow-[0_0_40px_rgba(245,230,66,0.1)]'
-      }`}
-    >
-      {/* Top Header Controls with Fullscreen Handler */}
-      <HeaderBar 
-        isFullScreen={isFullScreen} 
-        onToggleFullScreen={() => setIsFullScreen(!isFullScreen)} 
-      />
+    <main className="h-screen w-screen overflow-hidden bg-[#090909] text-[#F5F5F5] flex flex-col select-none">
+      <HeaderBar />
 
-      {/* Main Workspace (Sidebar + Code Editor + Live Preview Canvas) */}
-      <div className="flex flex-1 overflow-hidden">
-        <FileExplorer />
-        
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <div className="flex-1 flex overflow-hidden">
-            <CodeEditorArea />
+      <div ref={containerRef} className="flex-1 flex overflow-hidden relative">
+        {/* Left Column: File Explorer */}
+        <div style={{ width: `${explorerWidth}%` }} className="h-full shrink-0">
+          <FileExplorer />
+        </div>
+
+        {/* Resizer 1 */}
+        <div
+          onMouseDown={() => startDrag('left')}
+          className="w-[2px] bg-[#292929] hover:bg-[#FFD400] cursor-col-resize transition-colors shrink-0 z-20"
+        />
+
+        {/* Center Column: Monaco Editor */}
+        <div style={{ width: `${editorWidth}%` }} className="h-full min-w-0">
+          <CodeEditorArea />
+        </div>
+
+        {/* Resizer 2 */}
+        <div
+          onMouseDown={() => startDrag('right')}
+          className="w-[2px] bg-[#292929] hover:bg-[#FFD400] cursor-col-resize transition-colors shrink-0 z-20"
+        />
+
+        {/* Right Split Column: Live Preview (Top) + Console Output (Bottom) */}
+        <div
+          ref={rightPaneRef}
+          style={{ width: `${rightPaneWidth}%` }}
+          className="h-full flex flex-col shrink-0 min-w-0"
+        >
+          <div style={{ height: `${previewHeight}%` }} className="w-full min-h-0">
             <LivePreview />
           </div>
-          <ConsoleOutput />
-        </div>
-      </div>
 
-      {/* Bottom Status Bar */}
-      <div className="bg-[#08080a] px-4 py-1.5 border-t border-neutral-800 flex justify-between items-center text-[11px] text-neutral-500 font-mono shrink-0">
-        <div>Ready | Ln 9, Col 42 | TypeScript 5.4.2</div>
-        <div className="flex gap-4">
-          <span className="text-emerald-400">● WEBGL 2.0 ACTIVE</span>
-          <span>LATENCY: 14MS</span>
+          {/* Vertical Resizer */}
+          <div
+            onMouseDown={() => startDrag('vertical')}
+            className="h-[2px] bg-[#292929] hover:bg-[#FFD400] cursor-row-resize transition-colors shrink-0 z-20"
+          />
+
+          <div
+            style={{ height: `${100 - previewHeight}%` }}
+            className="w-full min-h-0"
+          >
+            <ConsoleOutput />
+          </div>
         </div>
       </div>
-    </section>
+    </main>
   );
 };
+
+export default CodeLabMain;

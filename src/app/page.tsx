@@ -1,4 +1,4 @@
-"use client";
+
 
 import HeroSection from "@/components/sections/HeroSection";
 import EngineeringSection from "@/components/sections/EngineeringSection";
@@ -8,6 +8,8 @@ import CodeLabSection from "@/components/sections/CodeLabSection";
 import AiBackgroundLabSection from "@/components/sections/AiBackgroundLabSection";
 import GamesSection from "@/components/sections/GamesSection";
 import ContactSection from "@/components/sections/ContactSection";
+
+
 
 
 export default function Home() {
@@ -24,7 +26,7 @@ export default function Home() {
       <AiBackgroundLabSection/>
       <GamesSection/>
       <ContactSection/>
-      
+
       {/* Aage ke sections yahan aage aayenge */}
     </main>
   );
